@@ -1,411 +1,494 @@
 const path = require('path');
 
-module.exports = function (context) {
+module.exports = function(context) {
 
-	const Component = context.React.Component;
-	const React = context.React;
-	const docker = context.docker.docker;
-	const {remote} = context.electron;
-	const dialog = remote.dialog;
-	const sendEvent = context.events.send;
+  const Component = context.React.Component;
+  const React = context.React;
+  const docker = context.docker.docker;
+  const {
+    remote
+  } = context.electron;
+  const dialog = remote.dialog;
+  const sendEvent = context.events.send;
 
-	const localPath = remote.app.getAppPath();
+  const localPath = remote.app.getAppPath();
 
-	const siteData = remote.require(path.join(localPath, './helpers/site-data'));
-	const startSite = remote.require(path.join(localPath, './main/actions-sites/startSite'));
-	const formatHomePath = remote.require('./helpers/format-home-path');
+  const siteData = remote.require(path.join(localPath, './helpers/site-data'));
+  const startSite = remote.require(path.join(localPath, './main/actions-sites/startSite'));
+  const formatHomePath = remote.require('./helpers/format-home-path');
 
-	return class SiteInfoVolumes extends Component {
-		constructor (props) {
-			super(props);
+  return class SiteInfoVolumes extends Component {
+    constructor(props) {
+      super(props);
 
-			this.state = {
-				volumes: [],
-				path: null,
-				provisioning: false,
-				isChanged: false
-			};
+      this.state = {
+        volumes: [],
+        path: null,
+        provisioning: false,
+        isChanged: false
+      };
 
-			this.inspectContainer = this.inspectContainer.bind(this);
-			this.stylesheetPath = path.resolve(__dirname, '../style.css');
-			this.newVolumeKeyDown = this.newVolumeKeyDown.bind(this);
-			this.removeVolume = this.removeVolume.bind(this);
-			this.openFolderDialog = this.openFolderDialog.bind(this);
-			this.remapVolumes = this.remapVolumes.bind(this);
-		}
+      this.inspectContainer = this.inspectContainer.bind(this);
+      this.stylesheetPath = path.resolve(__dirname, '../style.css');
+      this.newVolumeKeyDown = this.newVolumeKeyDown.bind(this);
+      this.removeVolume = this.removeVolume.bind(this);
+      this.openFolderDialog = this.openFolderDialog.bind(this);
+      this.remapVolumes = this.remapVolumes.bind(this);
+    }
 
-		componentDidMount () {
+    componentDidMount() {
 
-			this.inspectContainer();
+      this.inspectContainer();
 
-		}
+    }
 
-		inspectContainer () {
+    inspectContainer() {
 
-			let siteID = this.props.params.siteID;
-			let site = this.props.sites[siteID];
+      let siteID = this.props.params.siteID;
+      let site = this.props.sites[siteID];
 
-			docker().getContainer(site.container).inspect((err, containerInfo) => {
+      docker().getContainer(site.container).inspect((err, containerInfo) => {
 
-				let containerVolumes = [];
+        let containerVolumes = [];
 
-				containerInfo.Mounts.forEach(mount => {
-					containerVolumes.push({source: mount.Source, dest: mount.Destination});
-				});
+        containerInfo.Mounts.forEach(mount => {
+          containerVolumes.push({
+            source: mount.Source,
+            dest: mount.Destination
+          });
+        });
 
 
-				this.setState({
-					path: containerInfo.Path,
-					volumes: containerVolumes
-				});
+        this.setState({
+          path: containerInfo.Path,
+          volumes: containerVolumes
+        });
 
-			});
+      });
 
-		}
+    }
 
-		getPorts () {
+    getPorts() {
 
-			return new Promise((resolve) => {
+      return new Promise((resolve) => {
 
-				let siteID = this.props.params.siteID;
-				let site = this.props.sites[siteID];
+        let siteID = this.props.params.siteID;
+        let site = this.props.sites[siteID];
 
-				docker().getContainer(site.container).inspect((err, containerInfo) => {
+        docker().getContainer(site.container).inspect((err, containerInfo) => {
 
-					let containerPorts = [];
+          let containerPorts = [];
 
-					try {
+          try {
 
-						Object.keys(containerInfo.NetworkSettings.Ports).forEach(port => {
+            Object.keys(containerInfo.NetworkSettings.Ports).forEach(port => {
 
-							let portInfo = containerInfo.NetworkSettings.Ports[port][0];
+              let portInfo = containerInfo.NetworkSettings.Ports[port][0];
 
-							containerPorts.push({hostPort: portInfo.HostPort, containerPort: port.replace('/tcp', '')});
+              containerPorts.push({
+                hostPort: portInfo.HostPort,
+                containerPort: port.replace('/tcp', '')
+              });
 
-						});
+            });
 
-					} catch (e) {
-						console.warn(e);
-					}
+          } catch (e) {
+            console.warn(e);
+          }
 
-					resolve(containerPorts);
+          resolve(containerPorts);
 
-				});
+        });
 
-			});
+      });
 
-		}
+    }
 
-		newVolumeKeyDown (event) {
+    newVolumeKeyDown(event) {
 
-			let volumes = this.state.volumes;
+      let volumes = this.state.volumes;
 
-			let target = event.target.id == 'add-host-source' ? 'source' : 'dest';
-			let ref = Math.round(Math.random() * 1000);
+      let target = event.target.id == 'add-host-source' ? 'source' : 'dest';
+      let ref = Math.round(Math.random() * 1000);
 
-			volumes.push({
-				source: '',
-				dest: '',
-				ref
-			});
+      volumes.push({
+        source: '',
+        dest: '',
+        ref
+      });
 
-			event.target.value = '';
+      event.target.value = '';
 
-			this.setState({
-				volumes
-			}, () => {
+      this.setState({
+        volumes
+      }, () => {
 
-				switch (target) {
-					case 'source':
-						this.refs[`${ref}-source`].focus();
-						break;
+        switch (target) {
+          case 'source':
+            this.refs[`${ref}-source`].focus();
+            break;
 
-					case 'dest':
-						this.refs[`${ref}-dest`].focus();
-						break;
-				}
+          case 'dest':
+            this.refs[`${ref}-dest`].focus();
+            break;
+        }
 
-			});
+      });
 
-		}
+    }
 
-		volumeOnChange (input, index, event) {
+    volumeOnChange(input, index, event) {
 
-			let volumes = this.state.volumes;
+      let volumes = this.state.volumes;
 
-			volumes[index][input] = event.target.value;
+      volumes[index][input] = event.target.value;
 
-			this.setState({
-				volumes,
-				isChanged: true
-			});
+      this.setState({
+        volumes,
+        isChanged: true
+      });
 
-		}
+    }
 
-		removeVolume (index) {
+    removeVolume(index) {
 
-			let choice = dialog.showMessageBox(remote.getCurrentWindow(), {
-				type: 'question',
-				buttons: ['Yes', 'No'],
-				title: 'Confirm',
-				message: `Are you sure you want to remove this volume? This may cause your site to not function properly.`
-			});
+      let choice = dialog.showMessageBox(remote.getCurrentWindow(), {
+        type: 'question',
+        buttons: ['Yes', 'No'],
+        title: 'Confirm',
+        message: `Are you sure you want to remove this volume? This may cause your site to not function properly.`
+      });
 
-			if (choice !== 0) {
-				return;
-			}
+      if (choice !== 0) {
+        return;
+      }
 
-			this.setState({
-				volumes: this.state.volumes.filter((_, i) => i !== index),
-				isChanged: true
-			});
+      this.setState({
+        volumes: this.state.volumes.filter((_, i) => i !== index),
+        isChanged: true
+      });
 
-		}
+    }
 
-		openFolderDialog (index) {
+    openFolderDialog(index) {
 
-			let dialogResult = dialog.showOpenDialog(remote.getCurrentWindow(), {properties: ['createDirectory', 'openDirectory', 'openFile']});
-			let volumes = this.state.volumes;
+      let dialogResult = dialog.showOpenDialog(remote.getCurrentWindow(), {
+        properties: ['createDirectory', 'openDirectory', 'openFile']
+      });
+      let volumes = this.state.volumes;
 
-			if (dialogResult) {
+      if (dialogResult) {
 
-				if (dialogResult[0].indexOf('/Users') !== 0) {
-					return dialog.showErrorBox('Error', 'Sorry! You must provide a path in /Users.');
-				}
+        if (dialogResult[0].indexOf('/c/Users') !== 0) {
+          return dialog.showErrorBox('Error', 'Sorry! You must provide a path in /c/Users.');
+        }
 
-				if (isNaN(index)) {
+        if (isNaN(index)) {
 
-					volumes.push({
-						source: dialogResult[0],
-						dest: ''
-					});
+          volumes.push({
+            source: dialogResult[0],
+            dest: ''
+          });
 
-				} else {
+        } else {
 
-					volumes[index].source = dialogResult[0];
+          volumes[index].source = dialogResult[0];
 
-				}
+        }
 
-				this.setState({
-					volumes,
-					isChanged: true
-				});
+        this.setState({
+          volumes,
+          isChanged: true
+        });
 
-			}
+      }
 
-		}
+    }
 
-		remapVolumes () {
+    remapVolumes() {
 
-			let siteID = this.props.params.siteID;
-			let site = this.props.sites[siteID];
-			let errors = [];
+      let siteID = this.props.params.siteID;
+      let site = this.props.sites[siteID];
+      let errors = [];
 
-			this.state.volumes.forEach(volume => {
+      this.state.volumes.forEach(volume => {
 
-				if (!volume.source.trim() || !volume.dest.trim()) {
-					return errors.push('Empty source or destination.');
-				}
+        if (!volume.source.trim() || !volume.dest.trim()) {
+          return errors.push('Empty source or destination.');
+        }
 
-				if (volume.source.indexOf('/') !== 0 || volume.dest.indexOf('/') !== 0) {
-					return errors.push('Path does not start with slash.');
-				}
+        if (volume.source.indexOf('/') !== 0 || volume.dest.indexOf('/') !== 0) {
+          return errors.push('Path does not start with slash.');
+        }
 
-				if (formatHomePath(volume.source).indexOf('/Users') !== 0 && formatHomePath(volume.source).indexOf('/Volumes') !== 0) {
-					return errors.push('Path does not start with /Users or /Volumes');
-				}
+        if (formatHomePath(volume.source).indexOf('/c/Users') !== 0 && formatHomePath(volume.source).indexOf('/Volumes') !== 0) {
+          return errors.push('Path does not start with /c/Users or /Volumes');
+        }
 
-			});
+      });
 
-			if (errors.length) {
+      if (errors.length) {
 
-				return dialog.showErrorBox('Invalid Paths Provided', `Sorry! There were invalid paths provided.
-				
+        return dialog.showErrorBox('Invalid Paths Provided', `Sorry! There were invalid paths provided.
+
 Please ensure that all paths have a valid source and destination.
 
-Also, all source paths must begin with either /Users or /Volumes.`);
+Also, all source paths must begin with either /c/Users or /Volumes.`);
 
-			}
+      }
 
-			let choice = dialog.showMessageBox(remote.getCurrentWindow(), {
-				type: 'question',
-				buttons: ['Cancel', 'Remap Volumes'],
-				title: 'Confirm',
-				message: `Are you sure you want to remap the volumes for this site? There may be inadvertent effects if volumes aren't mapped correctly.
+      let choice = dialog.showMessageBox(remote.getCurrentWindow(), {
+        type: 'question',
+        buttons: ['Cancel', 'Remap Volumes'],
+        title: 'Confirm',
+        message: `Are you sure you want to remap the volumes for this site? There may be inadvertent effects if volumes aren't mapped correctly.
 
-Last but not least, make sure you have an up-to-date backup. 
+Last but not least, make sure you have an up-to-date backup.
 
 There is no going back after this is done.`
-			});
+      });
 
-			if (choice === 0) {
-				return;
-			}
+      if (choice === 0) {
+        return;
+      }
 
-			this.setState({
-				isChanged: false,
-				provisioning: true
-			});
+      this.setState({
+        isChanged: false,
+        provisioning: true
+      });
 
-			sendEvent('updateSiteStatus', siteID, 'provisioning');
+      sendEvent('updateSiteStatus', siteID, 'provisioning');
 
-			docker().getContainer(site.container).commit().then(image => {
+      docker().getContainer(site.container).commit().then(image => {
 
-				let oldSiteContainer = site.container;
+        let oldSiteContainer = site.container;
 
-				this.getPorts().then((ports) => {
+        this.getPorts().then((ports) => {
 
-					docker().getContainer(site.container).kill().then(() => {
+          docker().getContainer(site.container).kill().then(() => {
 
-						const exposedPorts = {};
-						const portBindings = {};
+            const exposedPorts = {};
+            const portBindings = {};
 
-						ports.forEach((port) => {
-							exposedPorts[`${port.containerPort}/tcp`] = {};
+            ports.forEach((port) => {
+              exposedPorts[`${port.containerPort}/tcp`] = {};
 
-							portBindings[`${port.containerPort}/tcp`] = [{
-								'HostPort': port.hostPort.toString(),
-							}];
-						});
+              portBindings[`${port.containerPort}/tcp`] = [{
+                'HostPort': port.hostPort.toString(),
+              }];
+            });
 
-						docker().createContainer({
-							'Image': image.Id,
-							'Cmd': this.state.path,
-							'Tty': true,
-							'ExposedPorts': exposedPorts,
-							'HostConfig': {
-								'Binds': this.state.volumes.map((volume) => {
-									return `${formatHomePath(volume.source)}:${volume.dest}`;
-								}),
-								'PortBindings': portBindings,
-							},
-						}).then((container) => {
+            docker().createContainer({
+              'Image': image.Id,
+              'Cmd': this.state.path,
+              'Tty': true,
+              'ExposedPorts': exposedPorts,
+              'HostConfig': {
+                'Binds': this.state.volumes.map((volume) => {
+                  return `${formatHomePath(volume.source)}:${volume.dest}`;
+                }),
+                'PortBindings': portBindings,
+              },
+            }).then((container) => {
 
-							site.container = container.id;
+              site.container = container.id;
 
-							if ('clonedImage' in site) {
-								if (typeof site.clonedImage != 'string') {
-									site.clonedImage.push(image.Id);
-								} else {
-									site.clonedImage = [site.clonedImage, image.Id];
-								}
-							} else {
-								site.clonedImage = image.Id;
-							}
+              if ('clonedImage' in site) {
+                if (typeof site.clonedImage != 'string') {
+                  site.clonedImage.push(image.Id);
+                } else {
+                  site.clonedImage = [site.clonedImage, image.Id];
+                }
+              } else {
+                site.clonedImage = image.Id;
+              }
 
-							siteData.updateSite(siteID, site);
+              siteData.updateSite(siteID, site);
 
-							startSite(site).then(() => {
-								sendEvent('updateSiteStatus', siteID, 'running');
+              startSite(site).then(() => {
+                sendEvent('updateSiteStatus', siteID, 'running');
 
-								this.setState({
-									provisioning: false
-								});
+                this.setState({
+                  provisioning: false
+                });
 
-								context.notifier.notify({
-									title: 'Volumes Remapped',
-									message: `Volumes for ${site.name} have been remapped.`
-								});
+                context.notifier.notify({
+                  title: 'Volumes Remapped',
+                  message: `Volumes for ${site.name} have been remapped.`
+                });
 
-							});
+              });
 
-							docker().getContainer(oldSiteContainer).remove();
+              docker().getContainer(oldSiteContainer).remove();
 
-						});
+            });
 
-					});
+          });
 
-				});
+        });
 
-			});
+      });
 
-		}
+    }
 
-		formatSource (index) {
+    formatSource(index) {
 
-			let volumes = this.state.volumes;
+      let volumes = this.state.volumes;
 
-			volumes[index]['source'] = formatHomePath(volumes[index]['source']);
+      volumes[index]['source'] = formatHomePath(volumes[index]['source']);
 
-			this.setState({
-				volumes
-			});
+      this.setState({
+        volumes
+      });
 
-		}
+    }
 
-		render () {
+    render() {
 
-			return (
-				<div className="VolumesContainer">
-					<link rel="stylesheet" href={this.stylesheetPath}/>
+      return ( <
+        div className = "VolumesContainer" >
+        <
+        link rel = "stylesheet"
+        href = {
+          this.stylesheetPath
+        }
+        />
 
-					<ul className="TableList Form">
-						<li className="TableListRow">
-							<strong>Host Source</strong>
-							<strong>Container Destination</strong>
-						</li>
-						{
-							this.state.volumes.map((volume, index) => {
-								let ref = 'ref' in volume ? volume.ref : `${volume.source}:${volume.dest}`;
+        <
+        ul className = "TableList Form" >
+        <
+        li className = "TableListRow" >
+        <
+        strong > Host Source < /strong> <
+        strong > Container Destination < /strong> <
+        /li> {
+          this.state.volumes.map((volume, index) => {
+            let ref = 'ref' in volume ? volume.ref : `${volume.source}:${volume.dest}`;
 
-								return <li className="TableListRow" key={index}>
-									<div>
-										<input type="text" value={volume.source} placeholder="Host Source"
-										       ref={`${ref}-source`}
-										       onChange={this.volumeOnChange.bind(this, 'source', index)}
-										       onBlur={this.formatSource.bind(this, index)} />
+            return <li className = "TableListRow"
+            key = {
+                index
+              } >
+              <
+              div >
+              <
+              input type = "text"
+            value = {
+              volume.source
+            }
+            placeholder = "Host Source"
+            ref = {
+              `${ref}-source`
+            }
+            onChange = {
+              this.volumeOnChange.bind(this, 'source', index)
+            }
+            onBlur = {
+              this.formatSource.bind(this, index)
+            }
+            />
 
-										<span className="OpenFolder button --Inline" onClick={this.openFolderDialog.bind(this, index)}>
-											Browse
-										</span>
-									</div>
+            <
+            span className = "OpenFolder button --Inline"
+            onClick = {
+                this.openFolderDialog.bind(this, index)
+              } >
+              Browse <
+              /span> <
+              /div>
 
-									<div>
-										<input type="text" value={volume.dest} placeholder="Container Destination"
-										       ref={`${ref}-dest`}
-										       onChange={this.volumeOnChange.bind(this, 'dest', index)} />
-									</div>
+              <
+              div >
+              <
+              input type = "text"
+            value = {
+              volume.dest
+            }
+            placeholder = "Container Destination"
+            ref = {
+              `${ref}-dest`
+            }
+            onChange = {
+              this.volumeOnChange.bind(this, 'dest', index)
+            }
+            /> <
+            /div>
 
-									<div>
-										<span className="RemoveVolume" onClick={this.removeVolume.bind(this, index)}>
-											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8">
-												<path d="M7.71 6.29L5.41 4l2.3-2.29A1 1 0 0 0 6.29.29L4 2.59 1.71.29A1 1 0 1 0 .29 1.71L2.59 4 .29 6.29a1 1 0 1 0 1.42 1.42L4 5.41l2.29 2.3a1 1 0 0 0 1.42-1.42z"/>
-											</svg>
-										</span>
-									</div>
-								</li>
-							})
-						}
-						<li className="TableListRow">
-							<div>
-								<input type="text" id="add-host-source" placeholder="Add Host Source"
-								       onKeyDown={this.newVolumeKeyDown} />
+            <
+            div >
+              <
+              span className = "RemoveVolume"
+            onClick = {
+                this.removeVolume.bind(this, index)
+              } >
+              <
+              svg xmlns = "http://www.w3.org/2000/svg"
+            viewBox = "0 0 8 8" >
+              <
+              path d = "M7.71 6.29L5.41 4l2.3-2.29A1 1 0 0 0 6.29.29L4 2.59 1.71.29A1 1 0 1 0 .29 1.71L2.59 4 .29 6.29a1 1 0 1 0 1.42 1.42L4 5.41l2.29 2.3a1 1 0 0 0 1.42-1.42z" / >
+              <
+              /svg> <
+              /span> <
+              /div> <
+              /li>
+          })
+        } <
+        li className = "TableListRow" >
+        <
+        div >
+        <
+        input type = "text"
+        id = "add-host-source"
+        placeholder = "Add Host Source"
+        onKeyDown = {
+          this.newVolumeKeyDown
+        }
+        />
 
-								<span className="OpenFolder button --Inline" onClick={this.openFolderDialog.bind(this, 'new')}>
-									Browse
-								</span>
-							</div>
+        <
+        span className = "OpenFolder button --Inline"
+        onClick = {
+          this.openFolderDialog.bind(this, 'new')
+        } >
+        Browse <
+        /span> <
+        /div>
 
-							<div>
-								<input type="text" id="add-container-dest" placeholder="Add Container Destination"
-								       onKeyDown={this.newVolumeKeyDown} />
-							</div>
+        <
+        div >
+        <
+        input type = "text"
+        id = "add-container-dest"
+        placeholder = "Add Container Destination"
+        onKeyDown = {
+          this.newVolumeKeyDown
+        }
+        /> <
+        /div>
 
-							<div />
-						</li>
-					</ul>
+        <
+        div / >
+        <
+        /li> <
+        /ul>
 
-					<div className="Bottom">
-						<button className="--Green --Pill"
-						        disabled={!this.state.isChanged || this.state.provisioning || this.props.siteStatus != 'running'}
-						        onClick={this.remapVolumes}>
-							{this.state.provisioning ? 'Remapping Volumes...' : this.props.siteStatus == 'running' ? 'Remap Volumes' : 'Start Site to Remap Volumes'}
-						</button>
-					</div>
-				</div>
-			);
+        <
+        div className = "Bottom" >
+        <
+        button className = "--Green --Pill"
+        disabled = {!this.state.isChanged || this.state.provisioning || this.props.siteStatus != 'running'
+        }
+        onClick = {
+          this.remapVolumes
+        } > {
+          this.state.provisioning ? 'Remapping Volumes...' : this.props.siteStatus == 'running' ? 'Remap Volumes' : 'Start Site to Remap Volumes'
+        } <
+        /button> <
+        /div> <
+        /div>
+      );
 
-		}
-	}
+    }
+  }
 
 };
