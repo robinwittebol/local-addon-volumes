@@ -179,8 +179,8 @@ module.exports = function(context) {
 
       if (dialogResult) {
 
-        if (dialogResult[0].indexOf('/c/Users') !== 0) {
-          return dialog.showErrorBox('Error', 'Sorry! You must provide a path in /c/Users.');
+        if (dialogResult[0].indexOf('/Users') !== 0 && dialogResult[0].indexOf('/c/Users') !== 0) {
+          return dialog.showErrorBox('Error', 'Sorry! You must provide a path in /Users (/c/Users for Windows).');
         }
 
         if (isNaN(index)) {
@@ -221,8 +221,8 @@ module.exports = function(context) {
           return errors.push('Path does not start with slash.');
         }
 
-        if (formatHomePath(volume.source).indexOf('/c/Users') !== 0 && formatHomePath(volume.source).indexOf('/Volumes') !== 0) {
-          return errors.push('Path does not start with /c/Users or /Volumes');
+        if (formatHomePath(volume.source).indexOf('/Users') !== 0 && formatHomePath(volume.source).indexOf('/c/Users') !== 0 && formatHomePath(volume.source).indexOf('/Volumes') !== 0) {
+          return errors.push('Path does not start with /Users or /Volumes (/c/Users for Windows)');
         }
 
       });
@@ -233,7 +233,7 @@ module.exports = function(context) {
 
 Please ensure that all paths have a valid source and destination.
 
-Also, all source paths must begin with either /c/Users or /Volumes.`);
+Also, all source paths must begin with either /Users or /Volumes. (/c/Users for Windows)`);
 
       }
 
@@ -360,8 +360,8 @@ There is no going back after this is done.`
         li className = "TableListRow" >
         <
         strong > Host Source < /strong> <
-        strong > Container Destination < /strong> <
-        /li> {
+        strong > Container Destination < /strong> < /
+        li > {
           this.state.volumes.map((volume, index) => {
             let ref = 'ref' in volume ? volume.ref : `${volume.source}:${volume.dest}`;
 
@@ -394,8 +394,8 @@ There is no going back after this is done.`
                 this.openFolderDialog.bind(this, index)
               } >
               Browse <
-              /span> <
-              /div>
+              /span> < /
+            div >
 
               <
               div >
@@ -411,11 +411,11 @@ There is no going back after this is done.`
             onChange = {
               this.volumeOnChange.bind(this, 'dest', index)
             }
-            /> <
-            /div>
-
-            <
+            /> < /
             div >
+
+              <
+              div >
               <
               span className = "RemoveVolume"
             onClick = {
@@ -427,10 +427,10 @@ There is no going back after this is done.`
               <
               path d = "M7.71 6.29L5.41 4l2.3-2.29A1 1 0 0 0 6.29.29L4 2.59 1.71.29A1 1 0 1 0 .29 1.71L2.59 4 .29 6.29a1 1 0 1 0 1.42 1.42L4 5.41l2.29 2.3a1 1 0 0 0 1.42-1.42z" / >
               <
-              /svg> <
-              /span> <
-              /div> <
-              /li>
+              /svg> < /
+            span > <
+              /div> < /
+            li >
           })
         } <
         li className = "TableListRow" >
@@ -451,8 +451,8 @@ There is no going back after this is done.`
           this.openFolderDialog.bind(this, 'new')
         } >
         Browse <
-        /span> <
-        /div>
+        /span> < /
+        div >
 
         <
         div >
@@ -463,14 +463,14 @@ There is no going back after this is done.`
         onKeyDown = {
           this.newVolumeKeyDown
         }
-        /> <
-        /div>
+        /> < /
+        div >
 
         <
         div / >
         <
-        /li> <
-        /ul>
+        /li> < /
+        ul >
 
         <
         div className = "Bottom" >
@@ -483,8 +483,8 @@ There is no going back after this is done.`
         } > {
           this.state.provisioning ? 'Remapping Volumes...' : this.props.siteStatus == 'running' ? 'Remap Volumes' : 'Start Site to Remap Volumes'
         } <
-        /button> <
-        /div> <
+        /button> < /
+        div > <
         /div>
       );
 
